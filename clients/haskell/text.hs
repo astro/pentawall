@@ -4,6 +4,7 @@ import Control.Monad (forM_)
 import Control.Applicative
 import Data.List (transpose)
 import Data.Array.Unboxed
+import System
 
 import LEDWall
 import LoadImage
@@ -20,17 +21,21 @@ fontCoordinates char
 
 scroller :: StateT ScrollState IO [[Color]]
 scroller = do Scroll font n texts <- get
+              when (n - 16 > (maximum $ map (length . fst) texts) * 4) $
+                   liftIO $ exitWith ExitSuccess
               put $ Scroll font (n + 1) texts
               
-              forM (reverse [0..15]) $ \x ->
-                        forM (reverse [0..14]) $ \y ->
+              forM ([0..14]) $ \y ->
+                        forM ([0..15]) $ \x ->
                         do let (text, color) = case drop (y `div` 6) texts of
                                                  line:_ -> line
                                                  _ -> ("", RGB 0 0 0)
                                x' = x + n
-                               char = case drop (x' `div` 4) text of
-                                        char:_ -> char
-                                        _ -> ' '
+                               char 
+                                 | x' < 0 = ' '
+                                 | otherwise = case drop (x' `div` 4) text of
+                                                 char:_ -> char
+                                                 _ -> ' '
                                (fx, fy) = fontCoordinates char
                                (fx', fy') = (fx + x' `mod` 4, fy + y `mod` 6)
                                fontColor = font ! (fx', fy')
@@ -41,7 +46,8 @@ scroller = do Scroll font n texts <- get
 
 
 main = do (fontW, fontH, fontPic) <- loadImage "font4x6.png"
-          runAnimation scroller $ Scroll fontPic 0 [(cycle "Hello World ", RGB 255 255 0),
-                                                    (cycle "Mem:   3950564k total,  3584252k used,   366312k free,       28k buffers ", RGB 0 0 255),
-                                                    (cycle "°", RGB 255 0 0)]
-            
+          (s1 : s2 : _) <- getArgs
+          runAnimation scroller $ Scroll fontPic (-16) 
+            [(s1, RGB 255 255 0),
+             (s2, RGB 0 255 0),
+             ("", RGB 0 0 0)]
