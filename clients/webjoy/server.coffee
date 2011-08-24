@@ -5,18 +5,27 @@ sendKey = ->
 ##
 
 net = require('net')
-pentawall = net.createConnection(1338, 'ledwall.hq.c3d2.de')
+pentawall = null
+sendKey = ->
 
-pentawall.on 'connect', ->
-    pentawall.write "0400\r\n"
-    sendKey = (player, input) ->
-        pad = (s) ->
-            if s.length < 2
-                pad "0#{s}"
-            else
-                s
-        s = "0A#{pad player.toString(16)}#{pad input.toString(16)}01\r\n"
-        pentawall.write s
+setupPentawall = ->
+    pentawall = net.createConnection(1338, 'ledwall.hq.c3d2.de')
+
+    pentawall.on 'connect', ->
+        pentawall.write "0400\r\n"
+        sendKey = (player, input) ->
+            pad = (s) ->
+                if s.length < 2
+                    pad "0#{s}"
+                else
+                    s
+            s = "0A#{pad player.toString(16)}#{pad input.toString(16)}01\r\n"
+            pentawall.write s
+
+    pentawall.on 'error', setupPentawall
+    pentawall.on 'end', setupPentawall
+
+setupPentawall()
 
 ##
 # Web
