@@ -9,9 +9,13 @@ pentawall = null
 sendKey = ->
 
 setupPentawall = ->
+    if pentawall
+        return
+
     pentawall = net.createConnection(1338, 'ledwall.hq.c3d2.de')
 
     pentawall.on 'connect', ->
+        console.log "Connected to Pentawall"
         pentawall.write "0400\r\n"
         sendKey = (player, input) ->
             pad = (s) ->
@@ -22,8 +26,18 @@ setupPentawall = ->
             s = "0A#{pad player.toString(16)}#{pad input.toString(16)}01\r\n"
             pentawall.write s
 
-    pentawall.on 'error', setupPentawall
-    pentawall.on 'end', setupPentawall
+    reconnect = (e) ->
+        if e
+            console.error e.stack or e
+        if pentawall
+            try
+                pentawall.end()
+            catch e
+            pentawall = null
+            setTimeout setupPentawall, Math.ceil(Math.random() * 10) + 1
+    pentawall.on 'error', reconnect
+    pentawall.on 'end', reconnect
+    pentawall.on 'close', reconnect
 
 setupPentawall()
 
